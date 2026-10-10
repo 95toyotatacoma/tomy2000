@@ -1,26 +1,41 @@
-# tomy2000
-A modern upgrade of the vintage Omnibot 2000 using Raspberry Pi 5, sensors, servos, and a touchscreen UI. Tomy blends retro design with modern robotics for expressive movement, Wi-Fi control, and interactive features. Open-source, modular, and built to inspire makers and tinkerers.
+# TOMY2000
 
-🦾 Tomy: A Retro Robot Reimagined with Modern Tech
+TOMY2000 is a compact robot-neck controller project built around an Arduino Uno and two hobby servos. The firmware accepts serial commands to move the pan and tilt axes, allowing simple head motion control from a host system or controller.
 
-Tomy is a personal robotics restoration and reinvention project built on the vintage Omnibot 2000 platform. This repo documents the full transformation of Tomy into a fully programmable, Wi-Fi-connected robot powered by a Raspberry Pi 5, microcontrollers, servos, sensors, and a capacitive touchscreen interface.
+## Project structure
 
-The project blends retro-futurism with modern robotics, aiming to create an expressive, interactive, and modular home robot that can evolve over time.
+- `hardware/neck/` — PlatformIO project for the neck controller firmware
+- `hardware/servo_test/` — scratch/testing files for servo experimentation
 
-⸻
+## Hardware
 
-💡 Features:
-	•	Custom-built 3D-printed mechanical components
-	•	Dual-motor tread system for navigation
-	•	Servo-controlled arms and neck
-	•	Touchscreen UI for configuration and interaction
-	•	Sensor array for motion detection and obstacle avoidance
-	•	Modular software architecture using Python and ROS-compatible libraries
-	•	Open-source hardware and wiring schematics
+- Microcontroller: Arduino Uno R3
+- Servos: pan and tilt rotation servos
+- Control interface: serial over USB at 115200 baud
 
-⸻
+## Serial commands
 
-🎯 Goals:
-	•	Bring old tech to life with new tools
-	•	Encourage learning in robotics, design, and embedded systems
-	•	Celebrate DIY maker culture with transparency and documentation
+The firmware supports:
+
+- `PAN 90` — move the pan servo to 90 degrees
+- `TILT 90` — move the tilt servo to 90 degrees
+- `CENTER` — reset both servos to the center position
+
+The current motion ranges are constrained for safety:
+
+- Pan: 60° to 120°
+- Tilt: 70° to 110°
+
+## PlatformIO setup
+
+From the repo root:
+
+```bash
+cd hardware/neck
+pio run
+pio run --target upload
+```
+
+## Development notes
+
+This repository is intentionally lightweight and geared toward iterative hardware prototyping. The neck firmware is the main living project, while the servo test area remains separate as experimental scratch work.

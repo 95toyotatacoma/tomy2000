@@ -3,138 +3,128 @@
 #include <math.h>
 
 // ========================================
-// FUNCTION DECLARATIONS
-// ========================================
-
-void moveTo(float panAngle, float tiltAngle);
-
-// ========================================
 // TOMY 2000 — NECK CONTROLLER
-// Version 0.2 — Natural Movement
+// Version 0.3 — Expression Library
 // ========================================
 
-// Servo pins
+// ----------------------------------------
+// SERVO CONFIGURATION
+// ----------------------------------------
+
 constexpr uint8_t PAN_PIN = 9;
 constexpr uint8_t TILT_PIN = 10;
 
-// Movement limits
 constexpr int PAN_MIN = 60;
 constexpr int PAN_MAX = 120;
 
-constexpr int TILT_MIN = 70;
-constexpr int TILT_MAX = 110;
+// Calibrated safe operating limits
+// Physical clearance limits: 70-100 degrees
+// Includes a 5-degree safety margin
 
-// Default positions
+constexpr int TILT_MIN = 75;
+constexpr int TILT_MAX = 95;
+
 constexpr float PAN_CENTER = 90.0f;
 constexpr float TILT_CENTER = 90.0f;
 
-// Movement settings
 constexpr unsigned long UPDATE_INTERVAL = 20;
-unsigned long movementDuration = 800;
 
-// Servo objects
 Servo panServo;
 Servo tiltServo;
 
-// Current positions
+// ----------------------------------------
+// MOVEMENT STATE
+// ----------------------------------------
+
 float currentPan = PAN_CENTER;
 float currentTilt = TILT_CENTER;
 
-// Starting positions
 float startPan = PAN_CENTER;
 float startTilt = TILT_CENTER;
 
-// Target positions
 float targetPan = PAN_CENTER;
 float targetTilt = TILT_CENTER;
 
-// Movement state
 unsigned long movementStart = 0;
+unsigned long movementDuration = 800;
 unsigned long activeDuration = 800;
 unsigned long lastUpdate = 0;
 
 bool isMoving = false;
 
-// ========================================
-// BEHAVIOR CONTROLLER
-// ========================================
+// ----------------------------------------
+// EXPRESSION SYSTEM
+// ----------------------------------------
 
-enum Behavior {
-    NONE,
-    CURIOUS
+struct MotionStep {
+    int pan;
+    int tilt;
+    unsigned long duration;
+    unsigned long pause;
 };
 
-Behavior activeBehavior = NONE;
+// CURIOUS
+const MotionStep curiousSequence[] = {
+    {110, 90,  900, 0},
+    {110, 100, 700, 1000},
+    {90,  90,  1200, 0}
+};
 
-uint8_t behaviorStep = 0;
-unsigned long behaviorTimer = 0;
-unsigned long savedMovementDuration = 800;
+// NOD
+const MotionStep nodSequence[] = {
+    {90, 100, 350, 150},
+    {90, 80,  350, 150},
+    {90, 90,  500, 0}
+};
 
-// ========================================
-// CURIOUS BEHAVIOR
-// ========================================
+// SHAKE
+const MotionStep shakeSequence[] = {
+    {75,  90, 450, 100},
+    {105, 90, 600, 100},
+    {90,  90, 450, 0}
+};
 
-void updateBehavior() {
+// SCAN
+const MotionStep scanSequence[] = {
+    {60,  90, 1200, 500},
+    {120, 90, 2400, 500},
+    {90,  90, 1200, 0}
+};
 
-    if (activeBehavior != CURIOUS) {
-        return;
-    }
+// ATTENTION
+const MotionStep attentionSequence[] = {
+    {90, 90, 300, 0}
+};
 
-    unsigned long now = millis();
+// ----------------------------------------
+// ACTIVE EXPRESSION STATE
+// ----------------------------------------
 
-    switch (behaviorStep) {
+const MotionStep* activeSequence = nullptr;
 
-        case 0:
-            // Notice something to the right
-            movementDuration = 900;
-            moveTo(110, 90);
+uint8_t sequenceLength = 0;
+uint8_t sequenceIndex = 0;
 
-            behaviorStep = 1;
-            break;
+unsigned long pauseStart = 0;
 
-        case 1:
-            // Wait until the turn finishes
-            if (!isMoving) {
-                movementDuration = 700;
-                moveTo(110, 100);
+bool waitingForPause = false;
 
-                behaviorStep = 2;
-            }
-            break;
+// ----------------------------------------
+// FUNCTION DECLARATIONS
+// ----------------------------------------
 
-        case 2:
-            // Wait until the tilt finishes
-            if (!isMoving) {
-                behaviorTimer = now;
-                behaviorStep = 3;
-            }
-            break;
+void moveTo(float panAngle, float tiltAngle,
+            unsigned long duration);
 
-        case 3:
-            // Hold the curious pose
-            if (now - behaviorTimer >= 1000) {
-                movementDuration = 1200;
-                moveTo(90, 90);
+void updateMovement();
+void updateExpression();
+void startExpression(const MotionStep* sequence,
+                     uint8_t length);
 
-                behaviorStep = 4;
-            }
-            break;
-
-        case 4:
-        if (!isMoving) {
-            movementDuration = savedMovementDuration;
-
-            activeBehavior = NONE;
-            behaviorStep = 0;
-
-            Serial.println("CURIOUS COMPLETE");
-        }
-        break;
-    }
-}
+void processCommand(String command);
 
 // ========================================
-// EASING FUNCTION
+// EASING
 // ========================================
 
 float smoothstep(float t) {
@@ -143,33 +133,26 @@ float smoothstep(float t) {
 }
 
 // ========================================
-// START MOVEMENT
+// MOVEMENT ENGINE
 // ========================================
 
-void moveTo(float panAngle, float tiltAngle) {
+void moveTo(float panAngle, float tiltAngle,
+            unsigned long duration) {
 
-    // Clamp requested angles
     panAngle = constrain(panAngle, PAN_MIN, PAN_MAX);
     tiltAngle = constrain(tiltAngle, TILT_MIN, TILT_MAX);
 
-    // Capture current positions
     startPan = currentPan;
     startTilt = currentTilt;
 
-    // Set new targets
     targetPan = panAngle;
     targetTilt = tiltAngle;
 
-    // Start timer
     movementStart = millis();
-    activeDuration = movementDuration;
+    activeDuration = max(duration, 1UL);
 
     isMoving = true;
 }
-
-// ========================================
-// UPDATE MOVEMENT
-// ========================================
 
 void updateMovement() {
 
@@ -196,16 +179,83 @@ void updateMovement() {
     currentTilt =
         startTilt + (targetTilt - startTilt) * eased;
 
-    panServo.write(round(currentPan));
-    tiltServo.write(round(currentTilt));
+    panServo.write(
+    constrain(round(currentPan), PAN_MIN, PAN_MAX)
+    );
+
+    tiltServo.write(
+        constrain(round(currentTilt), TILT_MIN, TILT_MAX)
+    );
 
     if (progress >= 1.0f) {
+
         currentPan = targetPan;
         currentTilt = targetTilt;
+
         isMoving = false;
 
         Serial.println("MOVE COMPLETE");
     }
+}
+
+// ========================================
+// EXPRESSION ENGINE
+// ========================================
+
+void startExpression(const MotionStep* sequence,
+                     uint8_t length) {
+
+    activeSequence = sequence;
+    sequenceLength = length;
+    sequenceIndex = 0;
+
+    waitingForPause = false;
+
+    Serial.println("EXPRESSION STARTED");
+}
+
+void updateExpression() {
+
+    if (activeSequence == nullptr) {
+        return;
+    }
+
+    unsigned long now = millis();
+
+    // Wait until the current movement finishes
+    if (isMoving) {
+        return;
+    }
+
+    // Handle pauses between movements
+    if (waitingForPause) {
+
+        if (now - pauseStart <
+            activeSequence[sequenceIndex].pause) {
+            return;
+        }
+
+        waitingForPause = false;
+        sequenceIndex++;
+    }
+
+    // Expression finished
+    if (sequenceIndex >= sequenceLength) {
+
+        activeSequence = nullptr;
+
+        Serial.println("EXPRESSION COMPLETE");
+        return;
+    }
+
+    // Start next movement
+    const MotionStep& step =
+        activeSequence[sequenceIndex];
+
+    moveTo(step.pan, step.tilt, step.duration);
+
+    pauseStart = 0;
+    waitingForPause = true;
 }
 
 // ========================================
@@ -217,36 +267,67 @@ void processCommand(String command) {
     command.trim();
     command.toUpperCase();
 
-    // Manual commands cancel any active behavior.
-    // CURIOUS is handled separately below.
-   // Manual commands cancel autonomous behaviors
-    if (command != "CURIOUS") {
+    // New commands interrupt active expressions
+    activeSequence = nullptr;
+    waitingForPause = false;
 
-        if (activeBehavior != NONE) {
-            movementDuration = savedMovementDuration;
-        }
-
-        activeBehavior = NONE;
-        behaviorStep = 0;
-    }
+    // ------------------------------------
+    // EXPRESSIONS
+    // ------------------------------------
 
     if (command == "CURIOUS") {
 
-    // Preserve the user's movement speed
-    if (activeBehavior == NONE) {
-        savedMovementDuration = movementDuration;
+        startExpression(
+            curiousSequence,
+            sizeof(curiousSequence) /
+            sizeof(MotionStep)
+        );
     }
 
-    activeBehavior = CURIOUS;
-    behaviorStep = 0;
+    else if (command == "NOD") {
 
-    Serial.println("CURIOUS STARTED");
-    return;
+        startExpression(
+            nodSequence,
+            sizeof(nodSequence) /
+            sizeof(MotionStep)
+        );
     }
 
-    if (command == "CENTER") {
+    else if (command == "SHAKE") {
 
-        moveTo(PAN_CENTER, TILT_CENTER);
+        startExpression(
+            shakeSequence,
+            sizeof(shakeSequence) /
+            sizeof(MotionStep)
+        );
+    }
+
+    else if (command == "SCAN") {
+
+        startExpression(
+            scanSequence,
+            sizeof(scanSequence) /
+            sizeof(MotionStep)
+        );
+    }
+
+    else if (command == "ATTENTION") {
+
+        startExpression(
+            attentionSequence,
+            sizeof(attentionSequence) /
+            sizeof(MotionStep)
+        );
+    }
+
+    // ------------------------------------
+    // MANUAL MOVEMENT
+    // ------------------------------------
+
+    else if (command == "CENTER") {
+
+        moveTo(PAN_CENTER, TILT_CENTER,
+               movementDuration);
 
         Serial.println("CENTERING");
     }
@@ -255,7 +336,7 @@ void processCommand(String command) {
 
         int angle = command.substring(4).toInt();
 
-        moveTo(angle, targetTilt);
+        moveTo(angle, targetTilt, movementDuration);
 
         Serial.print("PAN TARGET: ");
         Serial.println(targetPan);
@@ -265,7 +346,7 @@ void processCommand(String command) {
 
         int angle = command.substring(5).toInt();
 
-        moveTo(targetPan, angle);
+        moveTo(targetPan, angle, movementDuration);
 
         Serial.print("TILT TARGET: ");
         Serial.println(targetTilt);
@@ -283,7 +364,8 @@ void processCommand(String command) {
             int tiltAngle =
                 command.substring(separator + 1).toInt();
 
-            moveTo(panAngle, tiltAngle);
+            moveTo(panAngle, tiltAngle,
+                   movementDuration);
 
             Serial.println("LOOKING");
         }
@@ -323,7 +405,7 @@ void setup() {
 
     Serial.println();
     Serial.println("TOMY 2000 NECK CONTROLLER");
-    Serial.println("Version 0.2 — Natural Movement");
+    Serial.println("Version 0.3 - Expression Library");
     Serial.println();
 
     Serial.println("COMMANDS:");
@@ -333,7 +415,12 @@ void setup() {
     Serial.println("SPEED <milliseconds>");
     Serial.println("CENTER");
     Serial.println("CURIOUS");
+    Serial.println("NOD");
+    Serial.println("SHAKE");
+    Serial.println("SCAN");
+    Serial.println("ATTENTION");
     Serial.println();
+
     Serial.println("READY");
 }
 
@@ -344,7 +431,7 @@ void setup() {
 void loop() {
 
     updateMovement();
-    updateBehavior();
+    updateExpression();
 
     static String inputBuffer = "";
 
@@ -352,17 +439,16 @@ void loop() {
 
         char incoming = Serial.read();
 
-        // Process the command only when Enter is pressed
         if (incoming == '\n' || incoming == '\r') {
 
             if (inputBuffer.length() > 0) {
+
                 processCommand(inputBuffer);
                 inputBuffer = "";
             }
 
         } else {
 
-            // Collect characters as they arrive
             if (inputBuffer.length() < 64) {
                 inputBuffer += incoming;
             }

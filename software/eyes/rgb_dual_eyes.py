@@ -17,7 +17,7 @@ HEIGHT = 128
 EYE_COLOR = (218, 218, 218)  # #DADADA
 PUPIL_COLOR = (0, 0, 0)
 
-PUPIL_RADIUS = 29
+PUPIL_RADIUS = 45
 GAZE_RADIUS = 18
 
 FRAME_DELAY = 0.04
@@ -178,8 +178,14 @@ def draw_eye(x=0, y=0, openness=1.0):
 def render(eyes, x=0, y=0, openness=1.0):
     image = draw_eye(x, y, openness)
 
-    for eye in eyes:
-        eye.show(image)
+    for index, eye in enumerate(eyes):
+        if index == 1:
+            # Rotate Tomy's right OLED 180 degrees
+            output = image.rotate(180)
+        else:
+            output = image
+
+        eye.show(output)
 
 
 def move_gaze(eyes, start, end, duration=0.5):

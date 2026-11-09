@@ -2,6 +2,7 @@ import time
 import math
 import spidev
 import lgpio
+import random
 
 from PIL import Image, ImageDraw
 
@@ -216,6 +217,57 @@ def blink(eyes, x=0, y=0):
         render(eyes, x, y, openness)
         time.sleep(0.045)
 
+def suspicious_squint(eyes, x, y):
+    """
+    Slowly narrow Tomy's eyes as if he's
+    examining something suspicious.
+    """
+
+    # Gradually narrow the eyelids.
+    for openness in [1.0, 0.85, 0.70, 0.55, 0.42]:
+        render(eyes, x, y, openness)
+        time.sleep(0.09)
+
+    # Hold the suspicious expression.
+    time.sleep(1.1)
+
+    # Slowly relax.
+    for openness in [0.50, 0.65, 0.80, 1.0]:
+        render(eyes, x, y, openness)
+        time.sleep(0.10)
+
+def suspicious_double_take(eyes, current):
+    """
+    Tomy notices something, dismisses it,
+    then quickly looks back with suspicion.
+    """
+
+    # Choose a sideways direction.
+    direction = random.choice([-1.0, 1.0])
+    target = (direction * 0.85, -0.1)
+
+    # Something catches his eye.
+    move_gaze(eyes, current, target, 0.30)
+    time.sleep(0.45)
+
+    # Dismiss it.
+    move_gaze(eyes, target, (0.0, 0.0), 0.40)
+    time.sleep(0.65)
+
+    # Wait... WHAT was that?
+    move_gaze(eyes, (0.0, 0.0), target, 0.16)
+    time.sleep(0.55)
+
+    # Examine the suspicious thing.
+    suspicious_squint(eyes, *target)
+
+    # A final deliberate blink.
+    blink(eyes, *target)
+
+    # Return to normal, pretending nothing happened.
+    move_gaze(eyes, target, (0.0, 0.0), 0.55)
+
+    return (0.0, 0.0)
 
 def main():
     eyes = []
@@ -226,35 +278,81 @@ def main():
         for config in EYES:
             eyes.append(EyeDisplay(config))
 
-        render(eyes)
+        current = (0.0, 0.0)
+        render(eyes, *current)
         time.sleep(1)
+
+        print("Tomy is curious...")
+
+        test_duration = 60.0
+        start_time = time.monotonic()
+        next_blink = start_time + random.uniform(2.5, 5.0)
 
         positions = [
             (0.0, 0.0),
-            (-1.0, 0.0),
-            (1.0, 0.0),
-            (0.0, -1.0),
-            (0.0, 1.0),
-            (-0.7, -0.7),
-            (0.7, -0.7),
-            (-0.7, 0.7),
-            (0.7, 0.7),
-            (0.0, 0.0),
+            (-0.8, 0.0),
+            (0.8, 0.0),
+            (0.0, -0.7),
+            (0.0, 0.7),
+            (-0.6, -0.4),
+            (0.6, -0.4),
+            (-0.6, 0.4),
+            (0.6, 0.4),
         ]
 
-        current = positions[0]
+        while time.monotonic() - start_time < test_duration:
 
-        print("Tomy is looking around!")
+            # Prefer returning to center.
+            if random.random() < 0.40:
+                target = (0.0, 0.0)
+            else:
+                target = random.choice(positions[1:])
 
-        for target in positions[1:]:
-            move_gaze(eyes, current, target)
+            # Natural variation in gaze speed.
+            duration = random.uniform(0.35, 0.65)
+
+            move_gaze(eyes, current, target, duration)
             current = target
 
-            time.sleep(0.3)
-            blink(eyes, *current)
+            # Hold attention for a variable duration.
+            hold = random.uniform(1.0, 3.0)
+            hold_end = min(
+                time.monotonic() + hold,
+                start_time + test_duration
+            )
 
-        render(eyes)
-        print("Tomy's dual-eye animation complete!")
+            # Blink independently of gaze movement.
+            while time.monotonic() < hold_end:
+                if time.monotonic() >= next_blink:
+                    blink(eyes, *current)
+                    next_blink = (
+                        time.monotonic()
+                        + random.uniform(3.0, 6.0)
+                    )
+
+                time.sleep(0.05)
+
+            # Rare playful double take.
+            # Occasionally Tomy notices something suspicious.
+            if (
+                random.random() < 0.18
+                and time.monotonic() - start_time < test_duration - 5.0
+            ):
+                current = suspicious_double_take(eyes, current)
+                previous = current
+
+                move_gaze(eyes, current, (0.0, 0.0), 0.25)
+                time.sleep(0.15)
+
+                move_gaze(eyes, (0.0, 0.0), previous, 0.20)
+                current = previous
+
+                time.sleep(0.5)
+
+        # Return to neutral when the test finishes.
+        move_gaze(eyes, current, (0.0, 0.0), 0.5)
+
+        print("Tomy's Curious Idle test complete!")
 
     finally:
         for eye in eyes:

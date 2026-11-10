@@ -176,15 +176,31 @@ def draw_eye(x=0, y=0, openness=1.0):
     return image
 
 
-def render(eyes, x=0, y=0, openness=1.0):
-    image = draw_eye(x, y, openness)
+def render(
+    eyes,
+    x=0,
+    y=0,
+    openness=1.0,
+    left_openness=None,
+    right_openness=None
+):
+    # Preserve existing behavior unless independent
+    # eyelid values are explicitly provided.
+    if left_openness is None:
+        left_openness = openness
+
+    if right_openness is None:
+        right_openness = openness
+
+    left_image = draw_eye(x, y, left_openness)
+    right_image = draw_eye(x, y, right_openness)
 
     for index, eye in enumerate(eyes):
         if index == 1:
-            # Rotate Tomy's right OLED 180 degrees
-            output = image.rotate(180)
+            # Preserve physical orientation correction.
+            output = right_image.rotate(180)
         else:
-            output = image
+            output = left_image
 
         eye.show(output)
 
@@ -268,6 +284,131 @@ def suspicious_double_take(eyes, current):
     move_gaze(eyes, target, (0.0, 0.0), 0.55)
 
     return (0.0, 0.0)
+
+def test_independent_eyelids(eyes):
+    """
+    TOMY V1.3
+    Independent eyelid movement diagnostic.
+    """
+
+    print("Testing independent eyelids...")
+
+    # Start with both eyes fully open.
+    render(eyes)
+    time.sleep(1.0)
+
+    # Tomy's right eye slowly squints.
+    for openness in [1.0, 0.85, 0.70, 0.55, 0.42]:
+        render(
+            eyes,
+            left_openness=1.0,
+            right_openness=openness
+        )
+        time.sleep(0.12)
+
+    time.sleep(1.2)
+
+    # Right eye reopens.
+    for openness in [0.55, 0.70, 0.85, 1.0]:
+        render(
+            eyes,
+            left_openness=1.0,
+            right_openness=openness
+        )
+        time.sleep(0.12)
+
+    time.sleep(0.8)
+
+    # Tomy's left eye now squints.
+    for openness in [1.0, 0.85, 0.70, 0.55, 0.42]:
+        render(
+            eyes,
+            left_openness=openness,
+            right_openness=1.0
+        )
+        time.sleep(0.12)
+
+    time.sleep(1.2)
+
+    # Left eye reopens.
+    for openness in [0.55, 0.70, 0.85, 1.0]:
+        render(
+            eyes,
+            left_openness=openness,
+            right_openness=1.0
+        )
+        time.sleep(0.12)
+
+    render(eyes)
+    print("Independent eyelid test complete!")
+
+def unimpressed_side_eye(eyes, direction=1):
+    """
+    TOMY V1.3 — Unimpressed Side-Eye
+
+    A slow sideways glance followed by an uneven
+    two-eye squint and a deliberately awkward pause.
+
+    direction:
+        -1 = Tomy's left
+         1 = Tomy's right
+    """
+
+    center = (0.0, 0.0)
+    target = (direction * 0.85, 0.0)
+
+    print("Tomy is unimpressed...")
+
+    # 1. Start completely neutral.
+    render(eyes, *center)
+    time.sleep(0.8)
+
+    # 2. Slowly look sideways.
+    move_gaze(eyes, center, target, 0.85)
+    time.sleep(0.35)
+
+    # 3. Gradually narrow both eyes unevenly.
+    # The right eye becomes more skeptical.
+    for left_open, right_open in [
+        (1.00, 1.00),
+        (0.90, 0.85),
+        (0.80, 0.70),
+        (0.72, 0.55),
+        (0.65, 0.40),
+    ]:
+        render(
+            eyes,
+            *target,
+            left_openness=left_open,
+            right_openness=right_open
+        )
+        time.sleep(0.12)
+
+    # 4. Hold the judgmental stare.
+    time.sleep(2.0)
+
+    # 5. Slowly reopen the eyelids.
+    for left_open, right_open in [
+        (0.72, 0.55),
+        (0.80, 0.70),
+        (0.90, 0.85),
+        (1.00, 1.00),
+    ]:
+        render(
+            eyes,
+            *target,
+            left_openness=left_open,
+            right_openness=right_open
+        )
+        time.sleep(0.12)
+
+    time.sleep(0.3)
+
+    # Return to neutral, entirely unbothered.
+    move_gaze(eyes, target, center, 0.75)
+    time.sleep(0.5)
+
+    print("Tomy has finished judging.")
 
 def main():
     eyes = []

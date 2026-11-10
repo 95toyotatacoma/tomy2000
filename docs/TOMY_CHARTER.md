@@ -8,6 +8,7 @@
 - **Creator:** Proctor House Studio
 - **Development Status:** Active prototyping
 - **Document Classification:** Foundational Project Reference
+**End of Charter — Version 1.1**
 
 ---
 
@@ -349,6 +350,152 @@ behavior_intent:
 The Behavior Engine determines whether the action is appropriate and permitted. The Expression Engine translates the approved behavior into coordinated output.
 
 ---
+### 10.1 Generative Intelligence and Autonomous Personality
+
+#### Long-Term Intelligence Vision
+
+Tomy's long-term objective is to develop a context-aware, generative personality capable of producing spontaneous, meaningful, and character-consistent behavior.
+
+His personality should not depend exclusively on predefined dialogue trees, scripted reactions, fixed animation sequences, or randomized behavioral routines.
+
+These techniques are valuable during development and may remain useful as supporting systems. However, they are not intended to represent the final extent of Tomy's intelligence.
+
+**Tomy's personality should emerge from the interaction of generative intelligence, environmental perception, persistent memory, simulated emotional state, and autonomous behavioral decision-making.**
+
+The goal is not simply for Tomy to execute convincing performances. It is for him to independently determine when, why, and how to express himself.
+
+#### 10.1.1 Local-First Generative Intelligence
+
+Tomy's preferred long-term architecture is a local-first artificial intelligence system capable of operating with minimal dependence on external cloud services.
+
+A locally hosted large language model (LLM), or a combination of specialized generative and non-generative AI models, should be evaluated as the primary reasoning component of the Character Engine.
+
+The system should support:
+
+- Contextual reasoning about observations and interactions.
+- Spontaneous dialogue consistent with Tomy's personality.
+- Interpretation of environmental events.
+- Autonomous selection of behavioral intentions.
+- Retrieval and application of relevant memories.
+- Adaptation of responses to simulated emotional states.
+- Creative generation of humor, commentary, and playful behavior.
+- Continuity of personality across conversations and experiences.
+
+The precise models, inference framework, hardware acceleration, and computational architecture remain to be determined through engineering evaluation.
+
+The Raspberry Pi 5 is the established primary computing platform. Additional dedicated AI hardware or optional cloud-assisted inference may be considered if local performance, latency, memory capacity, or model quality require it.
+
+Local-first operation should remain the preferred direction, particularly for privacy, independence, and continuity of character.
+
+#### 10.1.2 Generative Behavioral Intent
+
+Generative intelligence should determine high-level behavioral intentions rather than directly manipulating hardware.
+
+For example, Tomy might observe that a familiar person has been working quietly for an extended period.
+
+His Character Engine could consider the observation, interaction history, current emotional state, personality traits, and environmental context before deciding whether to initiate an interaction.
+
+He might choose to make a sarcastic observation, investigate what the person is doing, quietly watch, or simply leave them alone.
+
+These decisions should not require a specific hardcoded response for every possible situation.
+
+The Character Engine should communicate its decisions through structured behavioral intentions.
+
+The Behavior Engine must evaluate those intentions against available capabilities, priorities, safety constraints, and current operating conditions.
+
+The Expression Engine then translates approved intentions into coordinated eye animations, physical movement, speech, sound, and other expressive outputs.
+
+**Generative intelligence determines what Tomy intends to do. Deterministic control systems determine how permitted actions are executed safely and reliably.**
+
+#### 10.1.3 Personality Continuity and Emergent Behavior
+
+Tomy's personality should remain recognizable even as his responses become increasingly spontaneous.
+
+His foundational character traits—intelligence, curiosity, playfulness, mischievousness, compassion, kindness, and occasional cantankerousness—should provide stable guidance for generative decision-making.
+
+His habits, preferences, humor, and interaction patterns may evolve through experience.
+
+Emergent behavior is desirable when it produces unexpected but appropriate actions consistent with Tomy's identity.
+
+Novelty alone is not sufficient. An unpredictable action should still make sense in the context of Tomy's personality, surroundings, memories, and current situation.
+
+Tomy should be capable of surprising his creator without becoming erratic, incoherent, intrusive, or unsafe.
+
+**His behavior should be spontaneous, but his character should remain unmistakably Tomy.**
+
+#### 10.1.4 Environmental Awareness and Situated Reasoning
+
+Generative intelligence should operate on interpreted environmental information provided by the Perception Layer.
+
+This may include observations derived from microphones, proximity sensors, motion detection, ambient lighting, orientation sensors, touch inputs, and future computer vision systems.
+
+Tomy should eventually be capable of reasoning about meaningful changes in his surroundings and deciding whether they warrant attention or action.
+
+His reactions should consider context rather than responding mechanically to every detected event.
+
+For example, detecting movement should not automatically trigger a greeting. Tomy should consider whether the movement is familiar, whether someone appears to be engaging him, whether he has recently interacted with that person, and whether responding would be appropriate.
+
+Environmental observations should include uncertainty where appropriate. Tomy should not treat incomplete sensor information or generated interpretations as established facts.
+
+**Perception provides awareness. Generative reasoning provides interpretation. Personality determines the character of the response.**
+
+#### 10.1.5 Memory-Informed Personality Development
+
+Tomy's generative intelligence should integrate with the persistent memory architecture described in Section 8.
+
+Relevant memories should influence future dialogue, behavioral preferences, recognition of familiar situations, and autonomous decisions.
+
+Over time, Tomy may develop recognizable habits, recurring jokes, preferred activities, and context-sensitive behavioral patterns.
+
+His development should be gradual, bounded, and consistent with his foundational character.
+
+Memory retrieval, retention, and modification must respect privacy settings and established system constraints.
+
+Generative intelligence must not independently rewrite safety-critical control software, disable protective mechanisms, or modify the foundational character requirements without deliberate human authorization.
+
+#### 10.1.6 Continuous Expression and Independent Execution
+
+Tomy's physical expressiveness must not depend on continuous availability of generative inference.
+
+Eye animations, blinking, basic attention behaviors, and other time-sensitive functions should continue smoothly while an AI model is processing information.
+
+The architecture should support asynchronous communication between generative intelligence and real-time expression systems.
+
+Predefined animations and behavioral routines should remain available as reusable expressive capabilities.
+
+Generative intelligence may select, sequence, and parameterize these capabilities without needing to generate low-level motor commands or individual animation frames.
+
+This separation should allow the intelligence system to evolve independently from the hardware and animation implementations.
+
+#### 10.1.7 Safety, Privacy, and Human Authority
+
+Generative intelligence must remain subordinate to the Safety Supervisor and established human control mechanisms.
+
+AI-generated behavioral intentions must be validated before execution.
+
+Safety-critical functions—including emergency stopping, obstacle avoidance, motor limits, battery protection, privacy controls, and movement restrictions—must not depend on generative model compliance.
+
+Tomy must remain interruptible, and autonomous behaviors must respect explicit human boundaries.
+
+His emotional expressions must remain simulated character behaviors rather than claims of subjective experience.
+
+Autonomy should increase his ability to interact meaningfully, not reduce human control or compromise trust.
+
+#### 10.1.8 Incremental Development Strategy
+
+Generative personality development should proceed incrementally.
+
+Early implementations may use deterministic behavior selection, weighted randomness, predefined expressions, and simple contextual rules.
+
+These systems should be designed as interchangeable components rather than permanent substitutes for generative intelligence.
+
+As perception, memory, and inference capabilities mature, the Character Engine should progressively assume responsibility for selecting high-level behavioral intentions.
+
+Existing animations, expressions, and hardware controllers should remain reusable throughout this transition.
+
+The objective is to evolve from scripted character performances toward a persistent, context-aware, generative robotic personality without sacrificing reliability or the established identity of Tomy.
+
+**The ultimate measure of success is not whether Tomy can generate unlimited responses, but whether his spontaneous behavior makes him feel like a distinctive, perceptive, funny, affectionate, and believable character.**
 
 ## 11. Expression and Animation Architecture
 

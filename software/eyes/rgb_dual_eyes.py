@@ -410,6 +410,31 @@ def unimpressed_side_eye(eyes, direction=1):
 
     print("Tomy has finished judging.")
 
+def select_idle_behavior(allow_dramatic=True):
+    """
+    TOMY V1.4 — Behavior Selector
+
+    Temporary weighted selection system.
+    Eventually replaceable by the AI Character Engine.
+    """
+
+    if not allow_dramatic:
+        return "curious"
+
+    return random.choices(
+        population=[
+            "curious",
+            "suspicious",
+            "unimpressed",
+        ],
+        weights=[
+            75,
+            17,
+            8,
+        ],
+        k=1
+    )[0]
+
 def main():
     eyes = []
 
@@ -421,13 +446,15 @@ def main():
 
         current = (0.0, 0.0)
         render(eyes, *current)
-        time.sleep(1)
+        time.sleep(1.0)
 
-        print("Tomy is curious...")
+        print("Tomy is awake and observing...")
+        print("Press Ctrl+C to put Tomy to sleep.")
 
-        test_duration = 60.0
-        start_time = time.monotonic()
-        next_blink = start_time + random.uniform(2.5, 5.0)
+        next_blink = (
+            time.monotonic()
+            + random.uniform(2.5, 5.0)
+        )
 
         positions = [
             (0.0, 0.0),
@@ -441,31 +468,105 @@ def main():
             (0.6, 0.4),
         ]
 
-        while time.monotonic() - start_time < test_duration:
+        last_behavior = "curious"
 
-            # Prefer returning to center.
+        # Continuous personality-driven idle.
+        while True:
+
+            # Prevent dramatic expressions back-to-back.
+            allow_dramatic = last_behavior == "curious"
+
+            behavior = select_idle_behavior(
+                allow_dramatic=allow_dramatic
+            )
+
+            if behavior == "suspicious":
+
+                print("Tomy noticed something suspicious...")
+
+                current = suspicious_double_take(
+                    eyes,
+                    current
+                )
+
+                last_behavior = "suspicious"
+                next_blink = (
+                    time.monotonic()
+                    + random.uniform(3.0, 6.0)
+                )
+                continue
+
+            elif behavior == "unimpressed":
+
+                print("Tomy is unimpressed...")
+
+                # Choose which direction to judge.
+                direction = random.choice([-1, 1])
+
+                # Return to center before the expression.
+                if current != (0.0, 0.0):
+                    move_gaze(
+                        eyes,
+                        current,
+                        (0.0, 0.0),
+                        0.4
+                    )
+                    current = (0.0, 0.0)
+
+                unimpressed_side_eye(
+                    eyes,
+                    direction=direction
+                )
+
+                current = (0.0, 0.0)
+
+                last_behavior = "unimpressed"
+                next_blink = (
+                    time.monotonic()
+                    + random.uniform(3.0, 6.0)
+                )
+                continue
+
+            # Default behavior: Curious observation.
+
             if random.random() < 0.40:
                 target = (0.0, 0.0)
             else:
                 target = random.choice(positions[1:])
 
-            # Natural variation in gaze speed.
-            duration = random.uniform(0.35, 0.65)
+            # V1.4 — Variable gaze speed.
+            gaze_style = random.random()
 
-            move_gaze(eyes, current, target, duration)
-            current = target
+            if gaze_style < 0.70:
+                # Calm, curious observation.
+                duration = random.uniform(0.35, 0.65)
 
-            # Hold attention for a variable duration.
-            hold = random.uniform(1.0, 3.0)
-            hold_end = min(
-                time.monotonic() + hold,
-                start_time + test_duration
+            elif gaze_style < 0.95:
+                # Something suddenly caught Tomy's attention.
+                duration = random.uniform(0.15, 0.28)
+
+            else:
+                # Slow, deliberate, slightly judgmental glance.
+                duration = random.uniform(0.75, 1.10)
+
+            move_gaze(
+                eyes,
+                current,
+                target,
+                duration
             )
 
-            # Blink independently of gaze movement.
+            current = target
+
+            # Natural pause with occasional blinking.
+            hold = random.uniform(1.0, 3.0)
+            hold_end = time.monotonic() + hold
+
             while time.monotonic() < hold_end:
+
                 if time.monotonic() >= next_blink:
                     blink(eyes, *current)
+
                     next_blink = (
                         time.monotonic()
                         + random.uniform(3.0, 6.0)
@@ -473,33 +574,18 @@ def main():
 
                 time.sleep(0.05)
 
-            # Rare playful double take.
-            # Occasionally Tomy notices something suspicious.
-            if (
-                random.random() < 0.18
-                and time.monotonic() - start_time < test_duration - 5.0
-            ):
-                current = suspicious_double_take(eyes, current)
-                previous = current
+            last_behavior = "curious"
 
-                move_gaze(eyes, current, (0.0, 0.0), 0.25)
-                time.sleep(0.15)
-
-                move_gaze(eyes, (0.0, 0.0), previous, 0.20)
-                current = previous
-
-                time.sleep(0.5)
-
-        # Return to neutral when the test finishes.
-        move_gaze(eyes, current, (0.0, 0.0), 0.5)
-
-        print("Tomy's Curious Idle test complete!")
+    except KeyboardInterrupt:
+        print("\nTomy is going to sleep...")
 
     finally:
         for eye in eyes:
             eye.close()
 
         lgpio.gpiochip_close(gpio)
+
+        print("Tomy's RGB eyes shut down safely.")
 
 
 if __name__ == "__main__":

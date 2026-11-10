@@ -217,11 +217,13 @@ def render(
         lower_lid_raise=right_lower_lid
     )
 
-    for index, eye in enumerate(eyes):
+    show_frames(eyes, (left_image, right_image))
+
+
+def show_frames(eyes, frames):
+    for index, (eye, output) in enumerate(zip(eyes, frames)):
         if index == 1:
-            output = right_image.rotate(180)
-        else:
-            output = left_image
+            output = output.rotate(180)
 
         eye.show(output)
 
@@ -558,10 +560,44 @@ def select_idle_behavior(allow_dramatic=True):
         k=1
     )[0]
 
-def main():
+def run_trance(eyes, current, transition, trance_requested):
+    def frozen_eyes(_eye_index, pupil_scale):
+        return draw_eye(*current, pupil_radius=PUPIL_RADIUS * pupil_scale)
+
+    transition.enter(time.monotonic(), frozen_eyes)
+    try:
+        while trance_requested():
+            now = time.monotonic()
+            show_frames(eyes, [transition.render(now, index) for index in range(len(eyes))])
+            time.sleep(max(0, FRAME_DELAY - (time.monotonic() - now)))
+    finally:
+        transition.leave()
+
+    # Hold the first blink closed, then ease open before the quick flickers.
+    render(eyes, *current, openness=0.0)
+    time.sleep(0.65)
+    reopen_start = time.monotonic()
+    while True:
+        progress = min(1.0, (time.monotonic() - reopen_start) / 1.15)
+        render(eyes, *current, openness=progress**2 * (3 - 2 * progress))
+        if progress == 1.0:
+            break
+        time.sleep(FRAME_DELAY)
+    for openness in (0.27, 0.50, 0.28, 0.48, 0.29, 0.46):
+        render(eyes, *current, openness=openness)
+        time.sleep(0.025)
+    render(eyes, *current)
+
+
+def main(trance_requested=None):
     eyes = []
 
     try:
+        if trance_requested is not None:
+            from trance_animation import TranceTransition, prepare_strands
+
+            transition = TranceTransition(prepare_strands())
+
         print("Waking Tomy's RGB eyes...")
 
         for config in EYES:
@@ -595,6 +631,10 @@ def main():
 
         # Continuous personality-driven idle.
         while True:
+
+            if trance_requested is not None and trance_requested():
+                run_trance(eyes, current, transition, trance_requested)
+                next_blink = time.monotonic() + random.uniform(2.5, 5.0)
 
             # Prevent dramatic expressions back-to-back.
             allow_dramatic = last_behavior == "curious"
@@ -687,6 +727,9 @@ def main():
 
             while time.monotonic() < hold_end:
 
+                if trance_requested is not None and trance_requested():
+                    break
+
                 if time.monotonic() >= next_blink:
                     blink(eyes, *current)
 
@@ -712,4 +755,26 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+    import os
+    import signal
+
+    parser = argparse.ArgumentParser(description="Run Tomy's RGB eyes.")
+    parser.add_argument("--trance-control", action="store_true",
+                        help="Enable SIGUSR1 to enter trance and SIGUSR2 to return.")
+    args = parser.parse_args()
+
+    if args.trance_control:
+        requested = False
+
+        def set_trance(signum, _frame):
+            global requested
+            requested = signum == signal.SIGUSR1
+
+        signal.signal(signal.SIGUSR1, set_trance)
+        signal.signal(signal.SIGUSR2, set_trance)
+        print(f"Enter trance: kill -USR1 {os.getpid()}", flush=True)
+        print(f"Return to normal: kill -USR2 {os.getpid()}", flush=True)
+        main(lambda: requested)
+    else:
+        main()

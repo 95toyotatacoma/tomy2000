@@ -115,47 +115,54 @@ class EyeDisplay:
         self.spi.close()
 
 
-def draw_eye(x=0, y=0, openness=1.0):
+
+
+def draw_eye(
+    x=0,
+    y=0,
+    openness=1.0,
+    pupil_radius=None,
+    lower_lid_raise=0
+):
     image = Image.new("RGB", (WIDTH, HEIGHT), (0, 0, 0))
     draw = ImageDraw.Draw(image)
 
     cx = WIDTH // 2
     cy = HEIGHT // 2
 
-    # The eye's visible opening shrinks during blinking.
+    if pupil_radius is None:
+        pupil_radius = PUPIL_RADIUS
+
+    pupil_radius = max(1, int(pupil_radius))
+    lower_lid_raise = max(0, int(lower_lid_raise))
+
+    # Normal eyelid opening.
     half_height = int((HEIGHT // 2) * openness)
 
     if half_height <= 0:
         return image
 
-    # Off-white sclera
+    # Off-white sclera.
     draw.rectangle(
-        (
-            0,
-            cy - half_height,
-            WIDTH,
-            cy + half_height
-        ),
+        (0, cy - half_height, WIDTH, cy + half_height),
         fill=EYE_COLOR
     )
 
-    # Pupil position
+    # Pupil position.
     px = cx + int(x * GAZE_RADIUS)
     py = cy + int(y * GAZE_RADIUS)
 
     draw.ellipse(
         (
-            px - PUPIL_RADIUS,
-            py - PUPIL_RADIUS,
-            px + PUPIL_RADIUS,
-            py + PUPIL_RADIUS
+            px - pupil_radius,
+            py - pupil_radius,
+            px + pupil_radius,
+            py + pupil_radius
         ),
         fill=PUPIL_COLOR
     )
 
-    # Mask anything outside the eyelid opening.
-
-    # Upper eyelid
+    # Upper eyelid — unchanged.
     upper_edge = cy - half_height - 1
 
     if upper_edge >= 0:
@@ -164,16 +171,21 @@ def draw_eye(x=0, y=0, openness=1.0):
             fill=(0, 0, 0)
         )
 
-    # Lower eyelid
-    lower_edge = cy + half_height + 1
+    
+    # Physical lower eyelid.
+    # The OLED mounting orientation places this
+    # edge at the top of our drawing coordinates.
+    lower_edge = cy - half_height - 1 + lower_lid_raise
 
-    if lower_edge < HEIGHT:
+    if lower_edge >= 0:
         draw.rectangle(
-            (0, lower_edge, WIDTH - 1, HEIGHT - 1),
+            (0, 0, WIDTH - 1, min(HEIGHT - 1, lower_edge)),
             fill=(0, 0, 0)
         )
 
+
     return image
+
 
 
 def render(
@@ -182,27 +194,39 @@ def render(
     y=0,
     openness=1.0,
     left_openness=None,
-    right_openness=None
+    right_openness=None,
+    pupil_radius=None,
+    left_lower_lid=0,
+    right_lower_lid=0
 ):
-    # Preserve existing behavior unless independent
-    # eyelid values are explicitly provided.
     if left_openness is None:
         left_openness = openness
 
     if right_openness is None:
         right_openness = openness
 
-    left_image = draw_eye(x, y, left_openness)
-    right_image = draw_eye(x, y, right_openness)
+    left_image = draw_eye(
+        x, y, left_openness,
+        pupil_radius=pupil_radius,
+        lower_lid_raise=left_lower_lid
+    )
+
+    right_image = draw_eye(
+        x, y, right_openness,
+        pupil_radius=pupil_radius,
+        lower_lid_raise=right_lower_lid
+    )
 
     for index, eye in enumerate(eyes):
         if index == 1:
-            # Preserve physical orientation correction.
             output = right_image.rotate(180)
         else:
             output = left_image
 
         eye.show(output)
+
+
+
 
 
 def move_gaze(eyes, start, end, duration=0.5):
@@ -409,6 +433,105 @@ def unimpressed_side_eye(eyes, direction=1):
     time.sleep(0.5)
 
     print("Tomy has finished judging.")
+
+def startled_surprise(eyes, current=(0.0, 0.0)):
+    """
+    TOMY V1.5b — Startled Surprise
+
+    Sudden gaze shift, pupil contraction,
+    startled freeze, and cautious recovery.
+    """
+
+    print("Tomy is startled!")
+
+    # Pick which side caught his attention.
+    direction = random.choice([-1.0, 1.0])
+    target = (direction * 0.85, -0.1)
+
+    # 1. Sudden attention shift.
+    move_gaze(eyes, current, target, 0.16)
+
+    # 2. Rapid pupil contraction.
+    for radius in [40, 34, 28, 25]:
+        render(eyes, *target, pupil_radius=radius)
+        time.sleep(0.045)
+
+    # 3. Freeze in surprise.
+    time.sleep(0.65)
+
+    # 4. Slowly recover.
+    for radius in range(25, 46, 2):
+        render(eyes, *target, pupil_radius=radius)
+        time.sleep(0.09)
+
+    # 5. A little hesitation before looking away.
+    time.sleep(0.35)
+
+    # 6. Cautiously return to neutral.
+    move_gaze(eyes, target, (0.0, 0.0), 0.75)
+
+    time.sleep(0.3)
+
+    print("Tomy has recovered.")
+
+    return (0.0, 0.0)
+
+
+def exasperated_eye_roll(eyes):
+    """
+    TOMY V1.5c — Fast, asymmetric eye roll.
+    Always sweeps left to right.
+    """
+
+    print("Tomy is rolling his eyes...")
+
+    # Physical upward gaze uses positive Y.
+    # Start with a quick upward-left glance.
+    render(eyes, x=-0.65, y=0.85)
+    time.sleep(0.06)
+
+    # Fast sweep from left to right.
+    for x in [-0.3, 0.1, 0.5, 0.85]:
+        render(eyes, x=x, y=0.85)
+        time.sleep(0.04)
+
+    # Asymmetric lower eyelids.
+    # Left rises higher than right.
+    render(
+        eyes,
+        x=0.85,
+        y=0.85,
+        left_lower_lid=20,
+        right_lower_lid=10
+    )
+    time.sleep(0.12)
+
+    # Tiny twitch in the left lower eyelid.
+    render(
+        eyes,
+        x=0.85,
+        y=0.85,
+        left_lower_lid=23,
+        right_lower_lid=10
+    )
+    time.sleep(0.05)
+
+    render(
+        eyes,
+        x=0.85,
+        y=0.85,
+        left_lower_lid=20,
+        right_lower_lid=10
+    )
+    time.sleep(0.05)
+
+    # Quick recovery.
+    render(eyes, x=0.0, y=0.0)
+    time.sleep(0.15)
+
+    print("Tomy has expressed his opinion.")
+
+    return (0.0, 0.0)
 
 def select_idle_behavior(allow_dramatic=True):
     """

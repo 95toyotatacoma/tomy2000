@@ -15,8 +15,9 @@ from PIL import Image, ImageDraw
 WIDTH = 128
 HEIGHT = 128
 
-EYE_COLOR = (218, 218, 218)  # #DADADA
-PUPIL_COLOR = (0, 0, 0)
+EYE_COLOR = (218, 218, 218)   # #DADADA
+PUPIL_COLOR = (0, 0, 0)       # #000000
+EYELID_COLOR = (21, 18, 17)  # 151211
 
 PUPIL_RADIUS = 45
 GAZE_RADIUS = 18
@@ -124,7 +125,7 @@ def draw_eye(
     pupil_radius=None,
     lower_lid_raise=0
 ):
-    image = Image.new("RGB", (WIDTH, HEIGHT), (0, 0, 0))
+    image = Image.new("RGB", (WIDTH, HEIGHT), EYELID_COLOR)
     draw = ImageDraw.Draw(image)
 
     cx = WIDTH // 2
@@ -162,13 +163,29 @@ def draw_eye(
         fill=PUPIL_COLOR
     )
 
+    # Mask the pupil wherever the eyelids are closed.
+    visible_top = max(0, cy - half_height)
+    visible_bottom = min(HEIGHT - 1, cy + half_height)
+
+    if visible_top > 0:
+        draw.rectangle(
+            (0, 0, WIDTH - 1, visible_top - 1),
+            fill=EYELID_COLOR
+        )
+
+    if visible_bottom < HEIGHT - 1:
+        draw.rectangle(
+            (0, visible_bottom + 1, WIDTH - 1, HEIGHT - 1),
+            fill=EYELID_COLOR
+        )
+
     # Upper eyelid — unchanged.
     upper_edge = cy - half_height - 1
 
     if upper_edge >= 0:
         draw.rectangle(
             (0, 0, WIDTH - 1, upper_edge),
-            fill=(0, 0, 0)
+            fill=EYELID_COLOR
         )
 
     
@@ -180,7 +197,7 @@ def draw_eye(
     if lower_edge >= 0:
         draw.rectangle(
             (0, 0, WIDTH - 1, min(HEIGHT - 1, lower_edge)),
-            fill=(0, 0, 0)
+            fill=EYELID_COLOR
         )
 
 

@@ -7,6 +7,8 @@ from pathlib import Path
 import re
 import time
 import xml.etree.ElementTree as ET
+import blink_animations as blinks
+import rgb_dual_eyes as rgb
 
 from PIL import Image, ImageChops, ImageColor, ImageDraw, ImageFilter
 
@@ -222,38 +224,165 @@ class TranceTransition:
         return render_trance(self.strands, 0.0, eye_index, reveal_elapsed)
 
 
+def trance_outro(eyes, strands, final_elapsed):
+    """
+    Fade the colorful trance strands into
+    Tomy's normal eyes, then recover.
+    """
+    print("Tomy is returning from trance...")
+
+    duration = 0.65
+    frames = 20
+
+    # Fade the moving strands into normal pupils.
+    for i in range(frames + 1):
+        t = i / frames
+        smooth = t * t * (3 - 2 * t)
+
+        for index, eye in enumerate(eyes):
+            trance_frame = render_trance(
+                strands,
+                final_elapsed + t * duration,
+                index
+            )
+
+            # Normal pupils gradually reappear.
+            normal_frame = rgb.draw_eye(
+                x=0,
+                y=0,
+                pupil_radius=45
+            )
+
+            frame = Image.blend(
+                trance_frame,
+                normal_frame,
+                smooth
+            )
+
+            if index == 1:
+                frame = frame.transpose(
+                    Image.Transpose.ROTATE_180
+                )
+
+            eye.show(frame)
+
+        time.sleep(duration / frames)
+
+    # Shared WHOA! ... blink-blink! recovery.
+    blinks.recovery_blink_sequence(eyes)
+
+    rgb.render(eyes, x=0, y=0)
+
+
+
 def main():
     strands = prepare_strands()
-    # Import the hardware driver only when running on the Pi.
-    import rgb_dual_eyes as rgb
+    transition = TranceTransition(strands)
 
     eyes = []
+
     try:
         for config in rgb.EYES:
             eyes.append(rgb.EyeDisplay(config))
 
-        print("TOMY V1.6c dazzled trance. Press Ctrl+C to stop.")
+        print("TOMY V1.6d — Complete Trance")
+
+        # Capture Tomy's normal centered pupils.
+        def frozen_eyes(index, pupil_scale):
+            radius = max(1, round(45 * pupil_scale))
+            return rgb.draw_eye(
+                x=0,
+                y=0,
+                pupil_radius=radius
+            )
+
+        # Phase 1: trance entrance.
+        print("Entering trance...")
         start = time.monotonic()
-        while True:
+        transition.enter(start, frozen_eyes)
+
+        # Allow time for all seven strands to emerge.
+        intro_duration = (
+            CONTRACT_END
+            + SMALL_PUPIL_HOLD
+            + EXPANSION_DURATION
+            + STRAND_INTERVAL * 6
+            + POINT_HOLD
+            + TRACE_DURATION
+        )
+
+        while time.monotonic() - start < intro_duration:
             frame_start = time.monotonic()
-            elapsed = frame_start - start
+
             for index, eye in enumerate(eyes):
-                frame = render_trance(strands, elapsed, index)
+                frame = transition.render(
+                    frame_start,
+                    index
+                )
+
                 if index == 1:
-                    frame = frame.transpose(Image.Transpose.ROTATE_180)
+                    frame = frame.transpose(
+                        Image.Transpose.ROTATE_180
+                    )
+
                 eye.show(frame)
 
-            remaining = 1 / FPS - (time.monotonic() - frame_start)
+            remaining = 1 / FPS - (
+                time.monotonic() - frame_start
+            )
             if remaining > 0:
                 time.sleep(remaining)
+
+        transition.leave()
+
+        # Phase 2: fully developed trance.
+        print("Tomy is transcendent...")
+        spin_start = time.monotonic()
+        trance_duration = 6.0
+
+        while time.monotonic() - spin_start < trance_duration:
+            frame_start = time.monotonic()
+            elapsed = frame_start - spin_start
+
+            for index, eye in enumerate(eyes):
+                frame = render_trance(
+                    strands,
+                    elapsed,
+                    index
+                )
+
+                if index == 1:
+                    frame = frame.transpose(
+                        Image.Transpose.ROTATE_180
+                    )
+
+                eye.show(frame)
+
+            remaining = 1 / FPS - (
+                time.monotonic() - frame_start
+            )
+            if remaining > 0:
+                time.sleep(remaining)
+
+        # Phase 3: fade out and recover.
+        trance_outro(
+            eyes,
+            strands,
+            time.monotonic() - spin_start
+        )
+
+        print("Tomy has returned to reality.")
+
     except KeyboardInterrupt:
-        pass
+        print("Trance interrupted.")
+
     finally:
         try:
             for eye in eyes:
                 eye.close()
         finally:
             rgb.lgpio.gpiochip_close(rgb.gpio)
+
 
 
 if __name__ == "__main__":
